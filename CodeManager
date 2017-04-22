@@ -1,0 +1,76 @@
+use Getopt::Long;
+use strict;
+use Data::Dumper;
+use File::Basename;
+use Encode;
+use utf8;
+use POSIX;
+my %opt;
+GetOptions(
+	'i=s' => \$opt{"input"},
+	't=s' => \$opt{"type"},
+	'update!' => \$opt{"update"},
+	'init=s' => \$opt{"init"},
+	'add!' => \$opt{"add"},
+	'del!' => \$opt{"del"},
+	'tree!' => \$opt{"tree"},
+	'merge!' => \$opt{"merge"},
+	) or die("Error in command line arguments\n");
+
+if($opt{"init"}){
+	init();
+}
+if($opt{"tree"}){
+	tree();
+}
+
+sub init{
+	#Check SoftWare
+	print "Start SoftWare Check!\n";
+	my @software = ("tree","git");
+	my @uninstall;
+	my $status;
+	foreach(@software){
+		$status+=check($_,\@uninstall);
+	}
+	if($status>0){
+		print "Can't Init Repertory, Some Command Can't find!\n";
+		foreach(@uninstall){
+			print "|-->".$_."\n";
+		}
+		exit;
+	}else{
+		print "Everything Look Good!\n";
+	}
+	
+	#Check Dir
+	if(-e $opt{"init"}){
+		print "OK\n";
+	}else{
+		print "Create New Repertory <$opt{'init'}> ? [y/n]\n";
+		my $response = <STDIN>;
+		if($response =~ /^y[\s\r\n]*$/){
+			`mkdir $opt{'init'}`;
+			print "Create New Repertory $opt{'init'} : OK!\n";
+		}else{
+			print "Can't Create New Repertory!\n";
+			exit;
+		}
+	}
+}
+
+sub check{
+	my $exec = shift;
+	my $uninstall = shift;
+	my $msg = `whereis $exec`;
+	if($msg =~ /^.*:\s\/(.*)$/){
+		return 0;
+	}else{
+		push @$uninstall,$exec;
+		return 1;
+	}
+}
+
+sub tree{
+	`tree repertory`;
+}
