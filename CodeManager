@@ -9,6 +9,7 @@ my %opt;
 GetOptions(
 	'i=s' => \$opt{"input"},
 	't=s' => \$opt{"type"},
+	'repo=s' => \$opt{"repo"},
 	'update!' => \$opt{"update"},
 	'init=s' => \$opt{"init"},
 	'add!' => \$opt{"add"},
@@ -19,9 +20,95 @@ GetOptions(
 
 if($opt{"init"}){
 	init();
+	exit;
 }
-if($opt{"tree"}){
+if($opt{"tree"}&&$opt{"repo"}){
 	tree();
+	exit;
+}
+if($opt{"add"}&&$opt{"input"}&&$opt{"repo"}){
+	add();
+	exit;
+}
+
+sub add{
+	if(-d $opt{"input"}){
+		my $project = basename($opt{"input"});
+		if($project){
+			chomp($project);
+			my $data = GetDate();
+			if(-e "$opt{'repo'}/repertory/$project"){
+				print "Project already exists\n";
+				exit;
+			}else{
+				`mkdir $opt{"repo"}/repertory/$project`;
+				`mkdir $opt{"repo"}/structure/$project`;
+				`cp -r $opt{"input"} $opt{"repo"}/repertory/`;
+				my $dir = `pwd`;
+				chdir("$opt{'repo'}/repertory/$project");
+				my @branch = `git branch`;
+				foreach my $br(@branch){
+					chomp($br);
+					if($br =~ /^fatal/){
+						`git init`;
+						`touch $opt{"repo"}/structure/$project/master`;
+					}else{
+						$br =~ s/^\*\s*//;
+						$br =~ s/^\s*//;
+						$br =~ s/\s/_/;
+						`touch $opt{"repo"}/structure/$project/$br`;
+					}
+				}
+				`echo $data"\t"$project"\t"$opt{'repo'}/repertory/$project"\t"$opt{'input'}"\t"transplant > $opt{"repo"}/Config`;
+				chdir($dir);
+			}
+		}else{
+			print "Project name Can't be Null\n";
+			exit;
+		}
+	}else{
+		print "This is a File, if you want add to a new Project [y/n]\n";
+		my $response = <STDIN>;
+		if($response =~ /^y[\s\r\n]*$/){
+			print "Please input Project name\n";
+			my $project = <STDIN>;
+			if($project){
+				chomp($project);
+				my $data = GetDate();
+				if(-e "$opt{'repo'}/repertory/$project"){
+					print "Project already exists\n";
+					exit;
+				}else{
+					`mkdir $opt{"repo"}/repertory/$project`;
+					`mkdir $opt{"repo"}/structure/$project`;
+					`cp -r $opt{"input"} $opt{"repo"}/repertory/`;
+					my $dir = `pwd`;
+					chdir("$opt{'repo'}/repertory/$project");
+					my @branch = `git branch`;
+					foreach my $br(@branch){
+						chomp($br);
+						if($br =~ /^fatal/){
+							`git init`;
+							`touch $opt{"repo"}/structure/$project/master`;
+						}else{
+							$br =~ s/^\*\s*//;
+							$br =~ s/^\s*//;
+							$br =~ s/\s/_/;
+							`touch $opt{"repo"}/structure/$project/$br`;
+						}
+					}
+					`echo $data"\t"$project"\t"$opt{'repo'}/repertory/$project"\t"$opt{'input'}"\t"transplant > $opt{"repo"}/Config`;
+					chdir($dir);
+				}
+			}else{
+				print "Project name Can't be Null\n";
+				exit;
+			}
+		}else{
+			print "Can't Create New Project!\n";
+			exit;
+		}
+	}
 }
 
 sub init{
@@ -45,12 +132,17 @@ sub init{
 	
 	#Check Dir
 	if(-e $opt{"init"}){
-		print "OK\n";
+		`mkdir $opt{'init'}/repertory` unless (-e "$opt{'init'}/repertory");
+		`mkdir $opt{'init'}/structure` unless (-e "$opt{'init'}/repertory");
+		`touch $opt{'init'}/Config` unless (-e "$opt{'init'}/repertory");
 	}else{
 		print "Create New Repertory <$opt{'init'}> ? [y/n]\n";
 		my $response = <STDIN>;
 		if($response =~ /^y[\s\r\n]*$/){
 			`mkdir $opt{'init'}`;
+			`mkdir $opt{'init'}/repertory`;
+			`mkdir $opt{'init'}/structure`;
+			`touch $opt{'init'}/Config`;
 			print "Create New Repertory $opt{'init'} : OK!\n";
 		}else{
 			print "Can't Create New Repertory!\n";
@@ -72,5 +164,17 @@ sub check{
 }
 
 sub tree{
-	`tree repertory`;
+	my $tree = `tree $opt{"repo"}/structure`;
+	print $tree."\n";
+}
+
+
+sub GetDate{
+	my ($sec,$min,$hour,$day,$mon,$year,$wday,$yday,$isdst)=localtime(time());
+	$year+=1900;
+	$mon+=1;
+	$mon = '0'.$mon if length($mon) == 1;
+	$day = '0'.$day if length($day) == 1;
+	my $id = "$year$mon$day";
+	return $id;
 }
